@@ -1,4 +1,5 @@
 import sys,os,glob
+import os.path
 import otter
 
 import pandas
@@ -147,6 +148,19 @@ for family in inj_families:
         report_inj.write_plot(figure=fig)
         plt.close()
 
+
+        # Attempt to write out the frame files.
+        # This requires access to lalsuite and to the 2014 Fall review branch
+        # to run e.g.
+        # lalapps_simburst_to_frame --simburst-file sg_f100_q9_linear_rescaled.xml --ifos [L1,H1] --gps-start 1125878400 --duration 4095
+
+        for frame_info in frames:
+            frame_loc = mdc_folder+"/"+family+"/"+injection[:-7]+"/"+frame_info['start time'][:5]+"/"+injection[:-7]+"-"+frame_info['start time']+"-"+frame_info['duration']
+            # First check if the frame has already been made.
+            if not os.path.isfile(frameloc):
+                report_inj.write_row(frameloc)
+            
+        
         report_inj.write_footer()
 
 
