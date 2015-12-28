@@ -107,7 +107,7 @@ for family in inj_families:
     for injection in glob.glob("{}*".format(family)):
         # Each injection gets its own report
         subreport_loc="{}/{}.html".format(family,injection)
-        report_inj = otter.Otter(subreport_loc, 
+        report_inj = otter.Otter(report_location+"/"+subreport_loc, 
 	                         {'title':"O1 Burst MDC",
 	                          'author':'Daniel Williams',
 	                          'subtitle':'{}'.format(injection)}
