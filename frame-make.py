@@ -63,7 +63,7 @@ prm_hist_type = {
     },
     "Gaussian": { "hrss": "log",
                   "time_geocent_gps": None,
-                  "psi": None,
+                  #"psi": None,
                   "ra": None,
                   "dec": None,
     },  
