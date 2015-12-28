@@ -106,7 +106,7 @@ for family in inj_families:
     os.chdir(xml_folder)
     for injection in glob.glob("{}*".format(family)):
         # Each injection gets its own report
-        subreport_loc=report_location+"/{}/{}.html".format(family,injection)
+        subreport_loc="{}/{}.html".format(family,injection)
         report_inj = otter.Otter(subreport_loc, 
 	                         {'title':"O1 Burst MDC",
 	                          'author':'Daniel Williams',
@@ -140,8 +140,8 @@ for family in inj_families:
             logbins = (min(prms), max(prms))
             #logbins = numpy.logspace(numpy.log10(logbins[0]), numpy.log10(logbins[1]), 100, base=10)
             ax[i].hist(prms, bins=100, log=True, histtype='stepfilled')
-            #ax[i].semilogx()
-            ax[i].set_ylim([5e2, 1e5]);
+            ax[i].semilogx()
+            #ax[i].set_ylim([5e2, 1e5]);
             i+=1
         # Add the file to the report.
         report_inj.write_plot(figure=fig)
