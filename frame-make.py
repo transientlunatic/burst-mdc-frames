@@ -63,7 +63,7 @@ prm_hist_type = {
     },
     "Gaussian": { "hrss": "log",
                   "time_geocent_gps": None,
-                  #"psi": None,
+                  "psi": None,
                   "ra": None,
                   "dec": None,
     },  
@@ -106,7 +106,8 @@ for family in inj_families:
     os.chdir(xml_folder)
     for injection in glob.glob("{}*".format(family)):
         # Each injection gets its own report
-        report_inj = otter.Otter(report_location+"/{}/{}.html".format(family,injection), 
+        subreport_loc=report_location+"/{}/{}.html".format(family,injection)
+        report_inj = otter.Otter(subreport_loc, 
 	                         {'title':"O1 Burst MDC",
 	                          'author':'Daniel Williams',
 	                          'subtitle':'{}'.format(injection)}
@@ -114,7 +115,7 @@ for family in inj_families:
         report_inj.write_page_header()
 
         # Write a link into the main report for this injection family.
-        # report.write_row("<a href=
+        report.write_row("<a href={}>{}</a>".format(subreport_loc, injection))
         
         # Load each injection xml file. Each starts with the family short name.
         # Get table
@@ -137,9 +138,9 @@ for family in inj_families:
             prms = [getattr(s, prm) for s in sims]
             ax[i].set_title(prm)
             logbins = (min(prms), max(prms))
-            logbins = numpy.logspace(numpy.log10(logbins[0]), numpy.log10(logbins[1]), 100, base=10)
-            ax[i].hist(prms, bins=logbins, log=True, histtype='stepfilled')
-            ax[i].semilogx()
+            #logbins = numpy.logspace(numpy.log10(logbins[0]), numpy.log10(logbins[1]), 100, base=10)
+            ax[i].hist(prms, bins=100, log=True, histtype='stepfilled')
+            #ax[i].semilogx()
             ax[i].set_ylim([5e2, 1e5]);
             i+=1
         # Add the file to the report.
