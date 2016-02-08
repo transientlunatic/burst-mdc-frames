@@ -137,6 +137,20 @@ def write_burst_mdc_log(fname, rows):
         print >>f, row
     f.close()
 
+def make_logfile(frameloc, frame_info, sim_burst_tbl):
+    if not os.path.isfile(frameloc+'.gwf.log'):
+        frame_info = frames.loc[j]
+        start, end = frame_info['start time'], frame_info['start time']+frame_info['duration']
+        mdc_log = []
+        for row in sim_burst_tbl:
+            if row.time_geocent_gps > end: break
+            elif row.time_geocent_gps < start: continue
+            mdc_log.append(write_burst_mdc_row(row, start))
+        print mdc_log
+        write_burst_mdc_log(frameloc+'gwf.log', mdc_log)
+
+
+    
 # First we need to form a list of the data frames for which we need the MDC frames.
 
 frames = pandas.DataFrame(columns=('run', 'ifo', 'start time', 'duration'))
@@ -216,6 +230,9 @@ for family in inj_families:
         plt.close()
 
         report_inj.write_warning('info', 'These injections can be found in {}'.format(mdc_folder+"/"+family+"/"+injection[:-16]+"/"))
+
+
+
         # Attempt to write out the frame files.
         # This requires access to lalsuite and to the 2014 Fall review branch
         # to run e.g.
@@ -230,7 +247,7 @@ for family in inj_families:
             #print ifosstr
             #print frame_info['ifo']
             frameloc = mdc_folder+"/"+family+"/"+injection[:-16]+"/"+frame_info['start time'][:5]+"/"+ifosstr+"-"+inj_families_names[family]+"-"+frame_info['start time']+"-"+frame_info['duration']
-            
+            make_logfile(frameloc, frame_info, sim_burst_tbl)
             # First check if the frame has already been made.
             if not os.path.isfile(frameloc+".gwf"):
                 print frameloc
@@ -248,17 +265,6 @@ for family in inj_families:
                 except:
                     if not os.path.isfile(frameloc):
                         report_inj.write_warning('danger', "Failed frame creation: {}".format(frame_info['start time']))
-
-            if not os.path.isfile(frameloc+'.gwf.log'):
-                frame_info = frames.loc[j]
-                start, end = frame_info['start time'], frame_info['start time']+frame_info['duration']
-                mdc_log = []
-                for row in sim_burst_tbl:
-                    if row.time_geocent_gps > end: break
-                    elif row.time_geocent_gps < start: continue
-                    mdc_log.append(write_burst_mdc_row(row, start))
-                print mdc_log
-                write_burst_mdc_log(frameloc+'.log', mdc_log)
 
         os.chdir(xml_folder)
         report_inj.write_footer()
