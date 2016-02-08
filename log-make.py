@@ -1,15 +1,19 @@
 from glue.ligolw import ligolw, utils, lsctables
 lsctables.use_in(ligolw.LIGOLWContentHandler);
-
+import numpy
 import lalburst, lalsimulation, lalmetaio
 from pylal.antenna import response
 
 injection = 'ga_d0100_rescaled.xml.gz'
 start = 1126621184
 
-xmldoc = utils.load_filename(injection, contenthandler=ligolw.LIGOLWContentHandler)
-sim_burst_tbl = lsctables.SimBurstTable.get_table(xmldoc)
-
+sim_burst_table = lalburst.SimBurstTableFromLIGOLw(injection, None, None)
+#from collections import defaultdict
+waveforms = []
+while True:
+	waveforms.append(sim_burst_table)
+	if sim_burst_table.next is None: break
+	sim_burst_table = sim_burst_table.next
 
 def write_burst_mdc_log(fname, rows):
     """
@@ -38,14 +42,15 @@ def measure_hrss(row, rate=16384.0):
     """
     Measure the various components of hrss (h+^2, hx^2, hphx) for a given input row. This is accomplished by generating the burst and calling the SWIG wrapped  XLALMeasureHrss in lalsimulation. Thus, the row object should be a SWIG wrapped SimBurst object. Rate is the sampling rate in Hz (default is 16kHz).
     """
-    print row.waveform
     swig_row = lalburst.CreateSimBurst()
     for a in lsctables.SimBurstTable.validcolumns.keys():
         try:
             setattr(swig_row, a, getattr( row, a ))
         except AttributeError: continue # we didn't define it
-        except TypeError: continue # the structure is different than the TableRow
-    setattr(swig_row, "waveform", row.waveform)
+        except TypeError: 
+            print a, getattr(row,a)
+            continue # the structure is different than the TableRow
+    #setattr(swig_row, "waveform", row.waveform)
     hp, hx = lalburst.GenerateSimBurst(swig_row, 1.0/rate)
     # FIXME: Totally inefficent --- but can we deep copy a SWIG SimBurst?
     hp0, hx0 = lalburst.GenerateSimBurst(swig_row, 1.0/rate)
@@ -72,7 +77,6 @@ def write_burst_mdc_row( row, start=0 ):
     Template:
     template = simulation_id, hrss, egw, graven_amp, internal_x, internal_phi, external_x, external_phi, external_psi, frame_gps, earth_center_gps, waveform, simhphp, simhxhx, simhphx, g1fp, g1fx, 0, 0, 0, h1fp, h1fx, 0, 0, 0, h2fp, h2fx, 0, 0, 0, l1fp, l1fx, 0, 0, 0, v1fp, v1fx, 0, 0, 0
     """
-    
     sim_id = row.simulation_id
     sim_hrss = row
     # FIXME: What are these?
@@ -84,7 +88,7 @@ def write_burst_mdc_row( row, start=0 ):
     external_phi = row.ra
     external_psi = row.psi
     frame_gps = start
-    earth_center_gps = float(row.get_time_geocent())
+    earth_center_gps = float(row.time_geocent_gps)
     sim_name = row.waveform
     # The factor of 1.8597e-21 is to convert from units of M_s/pc^2 to SI units
     egw = (row.egw_over_rsquared or 0)*1.8597e-21
@@ -100,6 +104,6 @@ def write_burst_mdc_row( row, start=0 ):
     return template
 
 mdc_log = []
-for row in sim_burst_tbl:
+for row in waveforms:
     mdc_log.append(write_burst_mdc_row(row, start))
 write_burst_mdc_log('injections.log', mdc_log)
