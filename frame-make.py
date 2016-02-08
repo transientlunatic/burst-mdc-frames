@@ -102,6 +102,9 @@ def write_burst_mdc_row( row, start=0 ):
     """
     
     sim_id = row.simulation_id
+
+    print row.simulation_id
+    
     sim_hrss = row
     # FIXME: What are these?
     graven_amp = 0
@@ -147,7 +150,7 @@ def make_logfile(frameloc, frame_info, sim_burst_tbl):
             elif row.time_geocent_gps < start: continue
             mdc_log.append(write_burst_mdc_row(row, start))
         print mdc_log
-        write_burst_mdc_log(frameloc+'gwf.log', mdc_log)
+        write_burst_mdc_log(frameloc+'.gwf.log', mdc_log)
 
 
     
@@ -184,6 +187,7 @@ for family in inj_families:
     report._write("<a href='{}'></a>".format(family))
     # Work on each family of injections sequentially.
     os.chdir(xml_folder)
+    
     for injection in glob.glob("{}*".format(family)):
         # Each injection gets its own report
         subreport_loc="{}/{}.html".format(family,injection)
@@ -195,8 +199,10 @@ for family in inj_families:
         report_inj.write_page_header()
         report_inj.write_breadcrumb([('Burst MDCs', '../../'),('O1','../'),(inj_families_names[family], '../index.html#{}'.format(family)),(injection,'#')])
 
+        
         # Write a link into the main report for this injection family.
         report.write_row("<a href={}>{}</a>".format(subreport_loc, injection))
+
         
         # Load each injection xml file. Each starts with the family short name.
         # Get table
@@ -242,18 +248,18 @@ for family in inj_families:
             frame_info = frames.loc[j]
             if int(frame_info['duration']) < 20: continue
             if int(frame_info['start time']) > lasttime: continue
-            #print re.findall("[A-Z]+", str(frame_info['ifo']))
+            
             ifosstr =  "".join(re.findall("[a-zA-Z]+", str(frame_info['ifo'])))
-            #print ifosstr
-            #print frame_info['ifo']
+            
             frameloc = mdc_folder+"/"+family+"/"+injection[:-16]+"/"+frame_info['start time'][:5]+"/"+ifosstr+"-"+inj_families_names[family]+"-"+frame_info['start time']+"-"+frame_info['duration']
-            make_logfile(frameloc, frame_info, sim_burst_tbl)
+
+            
             # First check if the frame has already been made.
             if not os.path.isfile(frameloc+".gwf"):
-                print frameloc
+                
                 path = mdc_folder+"/"+family+"/"+injection[:-16]+"/"+frame_info['start time'][:5]
                 mkdir(path)
-                #report_inj.write_row(frameloc)
+                
                 # Move into this folder so that we can produce the frame here
                 os.chdir(path)
 
@@ -266,6 +272,11 @@ for family in inj_families:
                     if not os.path.isfile(frameloc):
                         report_inj.write_warning('danger', "Failed frame creation: {}".format(frame_info['start time']))
 
+            # Make the GravEn log file for the frame
+            print sim_burst_tbl
+            make_logfile(frameloc, frame_info, sim_burst_tbl)
+
+                        
         os.chdir(xml_folder)
         report_inj.write_footer()
 
