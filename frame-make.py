@@ -120,7 +120,7 @@ def write_burst_mdc_row( row, start=0 ):
     external_phi = row.ra
     external_psi = row.psi
     frame_gps = start
-    earth_center_gps = float(row.get_time_geocent())
+    earth_center_gps = float(row.time_geocent_gps)
     sim_name = row.waveform
     # The factor of 1.8597e-21 is to convert from units of M_s/pc^2 to SI units
     egw = (row.egw_over_rsquared or 0)*1.8597e-21
@@ -211,12 +211,19 @@ for family in inj_families:
         
         # Load each injection xml file. Each starts with the family short name.
         # Get table
-        xmldoc = utils.load_filename(injection, contenthandler=ligolw.LIGOLWContentHandler)
-        sim_burst_tbl = lsctables.SimBurstTable.get_table(xmldoc)
+        #xmldoc = utils.load_filename(injection, contenthandler=ligolw.LIGOLWContentHandler)
+        #sim_burst_tbl = lsctables.SimBurstTable.get_table(xmldoc)
+
+        sim_burst_table = lalburst.SimBurstTableFromLIGOLw(injection, None, None)
+        waveforms = []
+        while True:
+            waveforms.append(sim_burst_table)
+            if sim_burst_table.next is None: break
+            sim_burst_table = sim_burst_table.next
         
-        for sim in sim_burst_tbl:
+        for sim in waveforms:
             sim.time_geocent_gps += 1e-9*sim.time_geocent_gps_ns
-        sims = filter(lambda s: s.waveform == inj_families_names[family], sim_burst_tbl)
+        sims = filter(lambda s: s.waveform == inj_families_names[family], waveforms)
 
         # Start the histograms of each of the file's parameters.
         report_inj.write_header(2,"Parameter histograms")
