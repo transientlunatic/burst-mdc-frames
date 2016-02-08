@@ -38,12 +38,14 @@ def measure_hrss(row, rate=16384.0):
     """
     Measure the various components of hrss (h+^2, hx^2, hphx) for a given input row. This is accomplished by generating the burst and calling the SWIG wrapped  XLALMeasureHrss in lalsimulation. Thus, the row object should be a SWIG wrapped SimBurst object. Rate is the sampling rate in Hz (default is 16kHz).
     """
+    print row.waveform
     swig_row = lalburst.CreateSimBurst()
     for a in lsctables.SimBurstTable.validcolumns.keys():
         try:
             setattr(swig_row, a, getattr( row, a ))
         except AttributeError: continue # we didn't define it
         except TypeError: continue # the structure is different than the TableRow
+    setattr(swig_row, "waveform", row.waveform)
     hp, hx = lalburst.GenerateSimBurst(swig_row, 1.0/rate)
     # FIXME: Totally inefficent --- but can we deep copy a SWIG SimBurst?
     hp0, hx0 = lalburst.GenerateSimBurst(swig_row, 1.0/rate)
@@ -63,7 +65,7 @@ def measure_hrss(row, rate=16384.0):
     return hrss, hphp, hxhx, hphx
 
 
-def write_burst_mdc_row( row, start=0, end=0):
+def write_burst_mdc_row( row, start=0 ):
     """
     Fill in a template row of a BurstMDC style (GravEn) log.
 
@@ -99,7 +101,5 @@ def write_burst_mdc_row( row, start=0, end=0):
 
 mdc_log = []
 for row in sim_burst_tbl:
-    if row.time_geocent_gps > end: break
-    elif row.time_geocent_gps < start: continue
     mdc_log.append(write_burst_mdc_row(row, start))
 write_burst_mdc_log('injections.log', mdc_log)

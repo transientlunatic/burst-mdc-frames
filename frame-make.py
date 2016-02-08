@@ -4,6 +4,11 @@ import otter
 import re
 import pandas
 
+
+import lalburst, lalsimulation, lalmetaio
+from pylal.antenna import response
+from logmake import *
+
 #--------------------------------------#
 # Startup information.
 # ------
@@ -143,13 +148,13 @@ def write_burst_mdc_log(fname, rows):
 def make_logfile(frameloc, frame_info, sim_burst_tbl):
     if not os.path.isfile(frameloc+'.gwf.log'):
         frame_info = frames.loc[j]
-        start, end = frame_info['start time'], frame_info['start time']+frame_info['duration']
+        start, end = float(frame_info['start time']), float(frame_info['start time'])+float(frame_info['duration'])
         mdc_log = []
         for row in sim_burst_tbl:
+            #print row.time_geocent_gps, start, end
             if row.time_geocent_gps > end: break
             elif row.time_geocent_gps < start: continue
             mdc_log.append(write_burst_mdc_row(row, start))
-        print mdc_log
         write_burst_mdc_log(frameloc+'.gwf.log', mdc_log)
 
 
@@ -273,7 +278,6 @@ for family in inj_families:
                         report_inj.write_warning('danger', "Failed frame creation: {}".format(frame_info['start time']))
 
             # Make the GravEn log file for the frame
-            print sim_burst_tbl
             make_logfile(frameloc, frame_info, sim_burst_tbl)
 
                         
