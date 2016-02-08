@@ -221,8 +221,8 @@ for family in inj_families:
             if sim_burst_table.next is None: break
             sim_burst_table = sim_burst_table.next
         
-        for sim in waveforms:
-            sim.time_geocent_gps += 1e-9*sim.time_geocent_gps_ns
+        #for sim in waveforms:
+        #    sim.time_geocent_gps += 1e-9*sim.time_geocent_gps_ns
         sims = filter(lambda s: s.waveform == inj_families_names[family], waveforms)
 
         # Start the histograms of each of the file's parameters.
