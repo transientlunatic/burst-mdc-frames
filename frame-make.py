@@ -81,7 +81,6 @@ prm_hist_type = {
             "dec": None,
     },
     "Gaussian": { "hrss": "log",
-                  "time_geocent_gps": None,
                   "psi": None,
                   "ra": None,
                   "dec": None,
@@ -108,7 +107,7 @@ def write_burst_mdc_row( row, start=0 ):
     
     sim_id = row.simulation_id
 
-    print row.simulation_id
+    #print row.simulation_id
     
     sim_hrss = row
     # FIXME: What are these?
