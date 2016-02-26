@@ -310,7 +310,7 @@ class Frame():
         log = '#  GravEn_SimID  SimHrss  SimEgwR2  GravEn_Ampl  Internal_x  Internal_phi  External_x  External_phi External_psi  FrameGPS  EarthCtrGPS  SimName  SimHpHp  SimHcHc  SimHpHc  H1       H1ctrGPS        H1fPlus        H1fCross    L1       L1ctrGPS        L1fPlus        L1fCross\n'
         rowlist = self.get_rowlist(mdc)
         for row in rowlist:
-            log += mdcs.gravEn_row(row, frame)
+            log += mdc.gravEn_row(row, self)
             log += "\n"
         return log
 
@@ -335,14 +335,14 @@ class FrameSet():
             frame = frame[1]
             ifos = frame['ifo'].replace("['",'').replace("']",'').replace("'",'').split(' ')
             frame = Frame(frame['start time'],frame['duration'],ifos)
-            frames.append(frame)
+            self.frames.append(frame)
         
     def full_logfile(self, mdc, location):
         """
         Produce a log file for the entire frame set 
         """
         full_log = ''
-        for frame in frames:
+        for frame in self.frames:
             full_log += frame.generate_log(mdc)
             
         text_file = open(location, "w")
