@@ -443,7 +443,8 @@ class Frame():
            The GWF file for this frame.
         """
         ifosstr = "".join(set(ifo for ifo in self.ifos))
-        filename = "{}-{}-{}-{}.gwf".format(ifosstr, channel, self.start, self.duration)
+        family = mdc.waveforms[0].waveform
+        filename = "{}-{}-{}-{}.gwf".format(ifosstr, family, self.start, self.duration)
 
         head_date = str(self.start)[:5]
         frameloc = directory+"/"+mdc.directory_path()+"/"+head_date+"/"
@@ -465,7 +466,7 @@ class Frame():
                     hp, hx = lalburst.GenerateSimBurst(sim_burst, 1.0/16384);
                     # Apply detector response
                     det = lalsimulation.DetectorPrefixToLALDetector(ifo)
-                    # Prooduce the total strains
+                    # Produce the total strains
                     h_tot = lalsimulation.SimDetectorStrainREAL8TimeSeries(hp, hx,
                                                                            sim_burst.ra, sim_burst.dec, sim_burst.psi, det)
                     # Inject the waveform into the overall timeseries
