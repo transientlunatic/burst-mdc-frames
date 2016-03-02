@@ -118,6 +118,7 @@ for family in inj_families:
         
         for o1frame in o1.frames:
             # Make the frames for each data frame
+            #print "Making the gwf files for {}".format(injection[:-16])
             o1frame.generate_gwf(mdcs, mdc_folder, 'SCIENCE')
 
 
