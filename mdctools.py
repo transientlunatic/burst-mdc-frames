@@ -208,7 +208,7 @@ class MDCSet():
         elif row.waveform == "BTLWNB":
             numberspart = "{}b{}tau{}".format(row.frequency, row.bandwidth, row.duration)
         
-        name += '{}{}'.format(self.inj_families_abb[row.waveform].upper(), numberspart).replace('.','d')
+        name += '{}{}'.format(self.inj_families_abb[row.waveform].lower(), numberspart).replace('.','d')
 
         return name
     
