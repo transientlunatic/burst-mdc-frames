@@ -27,10 +27,13 @@ class MDCSet():
         sim_burst_table = lalburst.SimBurstTableFromLIGOLw(simtable, None, None)
         self.waveforms = []
         self.strains = []
+        self.egw = []
         self.times = []
         while True:
             self.waveforms.append(sim_burst_table)
-            self.strains.append(self._generate_burst(sim_burst_table))
+            self._generate_burst(sim_burst_table)
+            self._measure_hrss()
+            self._measure_egw_rsq()
             self.times.append(sim_burst_table.time_geocent_gps)
             if sim_burst_table.next is None: break
             sim_burst_table = sim_burst_table.next
@@ -77,7 +80,7 @@ class MDCSet():
         # FIXME: Totally inefficent --- but can we deep copy a SWIG SimBurst?
         # DW: I tried that, and it doesn't seem to work :/
         hp0, hx0 = lalburst.GenerateSimBurst(self.swig_row, 1.0/rate)
-        return hp, hx, hp0, hx0 
+        self.hp, self.hx, self.hp0, self.hx0 = hp, hx, hp0, hx0
     
     def _getDetector(self, det):
         """
@@ -150,7 +153,7 @@ class MDCSet():
 
         return name
     
-    def _measure_hrss(self, row, rate=16384.0):
+    def _measure_hrss(self, rate=16384.0):
         """
         Measure the various components of hrss (h+^2, hx^2, hphx) for a given 
         input row. This is accomplished by generating the burst and calling 
@@ -174,7 +177,7 @@ class MDCSet():
         hphx : float
             The hrss of |HpHx| 
         """
-        hp, hx, hp0, hx0 = self.strains[row]
+        hp, hx, hp0, hx0 = self.hp, self.hx, self.hp0, self.hx0
         hp0.data.data *= 0
         hx0.data.data *= 0
 
@@ -188,9 +191,9 @@ class MDCSet():
         hp.data.data = numpy.abs(hx.data.data) + numpy.abs(hp.data.data)
         # |H+Hx|
         hphx = (lalsimulation.MeasureHrss(hp, hx0)**2 - hrss**2)/2
-        return hrss, hphp, hxhx, hphx
+        self.strains.append([hrss, hphp, hxhx, hphx])
     
-    def _measure_egw_rsq(self, row, rate=16384.0):
+    def _measure_egw_rsq(self, rate=16384.0):
         """
         Measure the energy emitted in gravitational waves divided 
         by the distance squared in M_solar / pc^2. This is accomplished 
@@ -210,8 +213,8 @@ class MDCSet():
             The energy emitted in gravitational waves divided 
             by the distance squared in M_solar / pc^2.
         """
-        hp, hx, _, _ = self.strains[row]
-        return lalsimulation.MeasureEoverRsquared(hp, hx)
+        hp, hx = self.hp, self.hx
+        self.egw.append(lalsimulation.MeasureEoverRsquared(hp, hx))
     
     def _responses(self, row):
         """
@@ -251,10 +254,10 @@ class MDCSet():
         str
             A string in the gravEn format which describes the injection.
         """
-        strains = self._measure_hrss(row)
+        strains = self.strains[row]
         rowname = self._simID(row)
         responses = self._responses(row)
-        energy = self._measure_egw_rsq(row)
+        energy = self.egw[row]
         row = self.waveforms[row]
         output = [] 
         output.append(self.name)                  # GravEn_SimID
@@ -263,9 +266,9 @@ class MDCSet():
         output.append(strains[0])                 # GravEn_Ampl
         output.append(0)                          # Internal_x (currently not implemented)
         output.append(0)                          # Intenal_phi ('')
-        output.append(row.ra)                     # External_x
+        output.append(np.cos(row.ra))                     # cos(External_x)
         output.append(row.dec)                    # External_phi
-        output.append(row.psi)                    # External_psi
+        output.append(row.psi)            # External_psi
         output.append(frame.start)                # FrameGPS
         output.append(row.time_geocent_gps)       # EarthCtrGPS
         output.append(rowname)                    # SimName
@@ -330,7 +333,7 @@ class FrameSet():
         """
 
         self.frames = []
-        frame_list = pd.read_csv(frame_list)
+        self.frame_list = frame_list = pd.read_csv(frame_list)
         for frame in frame_list.iterrows():
             frame = frame[1]
             ifos = frame['ifo'].replace("['",'').replace("']",'').replace("'",'').split(' ')
