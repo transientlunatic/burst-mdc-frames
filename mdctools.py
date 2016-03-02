@@ -7,11 +7,49 @@ from pylal.antenna import response
 from pylal.date import XLALTimeDelayFromEarthCenter
 from pylal.xlal.datatypes.ligotimegps import LIGOTimeGPS
 from pylal import inject 
+
+import lal, lalframe
+from pylal import Fr
+
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+import os
 
+
+def mkdir(path):
+    """
+    Make all of the tree of directories in a given path if they don't
+    already exist.
+
+    Parameters
+    ----------
+    path : str
+       The path to the desired directory.
+
+    """
+    sub_path = os.path.dirname(path)
+    if not os.path.exists(sub_path):
+        mkdir(sub_path)
+    if not os.path.exists(path):
+        os.mkdir(path)
 
 class MDCSet():
+
+    inj_families_names = {'ga' : 'Gaussian',
+                          'sg' : 'SineGaussian',
+                          'wnb': 'BTLWNB'
+                          }
+
+    inj_families_abb = dict((v,k) for k,v in inj_families_names.iteritems())
+
+    hist_parameters = {
+        "SineGaussian": ["hrss", "psi", "ra", "dec"],
+        "Gaussian": ["hrss", "psi", "ra", "dec"],
+        "BTLWNB": ["hrss", "ra", "dec"]
+    }
+
+
     def __init__(self, detectors, simtable, name=None):
         """
         Represents an MDC set, stored in an XML SimBurstTable file.
@@ -132,6 +170,20 @@ class MDCSet():
         gpstime = LIGOTimeGPS(float(gpstime))
         return XLALTimeDelayFromEarthCenter(detector.location, ra, dec, gpstime)
     
+    def directory_path(self):
+        """
+        Generate the directory where the frames from this MDC should be stored, 
+        so, e.g. Gaussians 0d100 would go in "ga/ga0d100/"
+
+        Returns
+        -------
+        str 
+           the folder structure
+        """
+        name = self._simID(0)
+        return "{}/{}".format(name[:2], name)
+        
+        
     def _simID(self, row):
         """
         Generate a name for an injection set in the format expected by cWB
@@ -140,16 +192,23 @@ class MDCSet():
         ----------
         row : SimBurst
             The simburst table row describing the injection
+
+        Returns
+        -------
+        str
+           The name of the injection in the cWB format
         """
         row = self.waveforms[row]
         name = ''
 
-        inj_families_names = {'ga' : 'Gaussian',
-                          'sg' : 'SineGaussian',
-                          'wnb': 'BTLWNB'
-                          }
-        inj_families_abb = dict((v,k) for k,v in inj_families_names.iteritems())
-        name += '{}{:.3f}'.format(inj_families_abb[row.waveform].upper(), row.duration*1e3).replace('.','d')
+        if row.waveform == "Gaussian":
+            numberspart = "{:.3f}".format(row.duration * 1e3)
+        elif row.waveform == "SineGaussian":
+            numberspart = "f{:.0f}q{:.0f}".format(row.frequency, row.q)
+        elif row.waveform == "BTLWNB":
+            numberspart = "{}b{}tau{}".format(row.frequency, row.bandwidth, row.duration)
+        
+        name += '{}{}'.format(self.inj_families_abb[row.waveform].upper(), numberspart).replace('.','d')
 
         return name
     
@@ -240,6 +299,48 @@ class MDCSet():
             output.append([detector, time, rs[0], rs[1]]   )
         return output
     
+    def plot_skymap(self):
+        """
+        Plot a skymap of the injections distribution in RA and DEC on a Hammer projection.
+        
+        Returns
+        -------
+        matplotlib figure
+        """
+        fig = plt.figure()
+        # Load the ra and dec numbers out of the waveforms 
+        dec = [getattr(s, 'dec') for s in self.waveforms]
+        ra = [getattr(s, 'ra') for s in self.waveforms]
+        
+        # Make the plot on a hammer projection
+        plt.subplot(111, projection='hammer')
+        H, x, y = np.histogram2d(ra, dec, [50, 25], range=[[0, 2*np.pi], [-np.pi/2, np.pi/2]])
+        dist = plt.pcolormesh(x-np.pi,y, H.T, cmap="viridis")
+        plt.title("Sky distribution")
+        plt.colorbar(dist, orientation='horizontal')
+        return fig
+    
+    def plot_hist(self, parameter):
+        """
+        Plot a histogram of a waveform parameter.
+
+        Parameters
+        ----------
+        parameter : str
+           The name of the simburst table parameter which is desired for the plot.
+
+        Returns
+        -------
+        matplotlib figure
+        """
+        fig = plt.figure()
+        prms = [getattr(s, parameter) for s in self.waveforms]
+        ax2 = plt.subplot(111)
+        ax2.set_title("{} distribution".format(parameter))
+        ax2.set_xlabel(parameter)
+        ax2.hist(prms, bins=100, log=True, histtype="stepfilled", alpha=0.6);
+        return fig
+
     def gravEn_row(self, row, frame):
         """
         Produces a gravEn-style log row for a row of the simBurstTable.
@@ -317,6 +418,73 @@ class Frame():
             log += "\n"
         return log
 
+    def generate_gwf(self, mdc, directory, channel="SCIENCE", force=False):
+        """
+        Produce the gwf file which corresponds to the MDC set over the period of this frame.
+
+        Parameters
+        ----------
+        mdc : MDCSet object
+           The MDC set which should be used to produce this frame.
+        directory : str
+           The root directory where all of the frames are to be stored, for example
+           "/home/albert.einstein/data/mdc/frames/"
+           would cause the SineGaussian injections to be made in the directories under
+           "/home/albert.einstein/data/mdc/frames/sg"
+        channel : str
+           The name of the channel which the injections should be made into. This is prepended by the initials
+           for each interferometer, so there will be a channel for each interferometer in the gwf.
+        force : bool
+           If true this forces the recreation of a GWF file even if it already exists.
+
+        Outputs
+        -------
+        gwf
+           The GWF file for this frame.
+        """
+        ifosstr = "".join(set(ifo for ifo in self.ifos))
+        filename = "{}-{}-{}-{}.gwf".format(ifosstr, channel, self.start, self.duration)
+
+        head_date = str(self.start)[:5]
+        frameloc = directory+"/"+mdc.directory_path()+"/"+head_date+"/"
+
+        if not os.path.isfile(frameloc + filename) or force:
+            data = []
+            # Define the start point of the time series top be generated for the injection
+            epoch = lal.LIGOTimeGPS(self.start)
+            # Loop through each interferometer
+            for ifo in self.ifos:
+                # Calculate the number of samples in the timeseries
+                nsamp = (self.end-self.start)*16384
+                # Make the timeseries
+                h_resp = lal.CreateREAL8TimeSeries("inj time series", epoch, 0, 1.0/16384, lal.StrainUnit, nsamp)
+                # Loop over all of the injections corresponding to this frame
+                for row in self.get_rowlist(mdc):
+                    sim_burst = mdc.waveforms[row]
+                    # Produce the time domain waveform for this injection
+                    hp, hx = lalburst.GenerateSimBurst(sim_burst, 1.0/16384);
+                    # Apply detector response
+                    det = lalsimulation.DetectorPrefixToLALDetector(ifo)
+                    # Prooduce the total strains
+                    h_tot = lalsimulation.SimDetectorStrainREAL8TimeSeries(hp, hx,
+                                                                           sim_burst.ra, sim_burst.dec, sim_burst.psi, det)
+                    # Inject the waveform into the overall timeseries
+                    lalsimulation.SimAddInjectionREAL8TimeSeries(h_resp, h_tot, None)
+
+                # Write out the data to the list which will eventually become our frame
+                data.append({"name": "%s:%s" % (ifo, channel),
+                             "data": h_resp.data.data,
+                             "start": float(epoch),
+                             "dx": h_resp.deltaT,
+                             "kind": "SIM"})
+
+            # Make the directory in which to store the files
+            # if it doesn't exist already
+            mkdir(frameloc)
+            # Write out the frame file
+            Fr.frputvect(frameloc+filename, data)
+        
+
 
 class FrameSet():
 
@@ -340,6 +508,34 @@ class FrameSet():
             frame = Frame(frame['start time'],frame['duration'],ifos)
             self.frames.append(frame)
         
+    def full_frameset(self, mdc, directory, channel="SCIENCE", force=False):
+        """
+        Produce the gwf files which corresponds to the MDC set over the period of the frames in this collection.
+
+        Parameters
+        ----------
+        mdc : MDCSet object
+           The MDC set which should be used to produce this frame.
+        directory : str
+           The root directory where all of the frames are to be stored, for example
+           "/home/albert.einstein/data/mdc/frames/"
+           would cause the SineGaussian injections to be made in the directories under
+           "/home/albert.einstein/data/mdc/frames/sg"
+        channel : str
+           The name of the channel which the injections should be made into. This is prepended by the initials
+           for each interferometer, so there will be a channel for each interferometer in the gwf.
+        force : bool
+           If true this forces the recreation of a GWF file even if it already exists.
+
+        Outputs
+        -------
+        gwf files
+           The GWF files for these frames.
+        """
+        for frame in self.frames:
+            frame.generate_gwf(mdc, directory, channel, force)
+
+
     def full_logfile(self, mdc, location):
         """
         Produce a log file for the entire frame set 
