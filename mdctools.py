@@ -442,7 +442,7 @@ class Frame():
         gwf
            The GWF file for this frame.
         """
-        ifosstr = "".join(set(ifo for ifo in self.ifos))
+        ifosstr = "".join(set(ifo[0] for ifo in self.ifos))
         family = mdc.waveforms[0].waveform
         filename = "{}-{}-{}-{}.gwf".format(ifosstr, family, self.start, self.duration)
 
