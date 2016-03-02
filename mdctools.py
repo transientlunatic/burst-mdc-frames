@@ -204,7 +204,11 @@ class MDCSet():
         if row.waveform == "Gaussian":
             numberspart = "{:.3f}".format(row.duration * 1e3)
         elif row.waveform == "SineGaussian":
-            numberspart = "f{:.0f}q{:.0f}".format(row.frequency, row.q)
+            if row.pol_ellipse_e==1.0: 
+                pol="linear"
+            else: 
+                pol = "elliptical"
+            numberspart = "f{:.0f}_q{:.0f}_{}".format(row.frequency, row.q, pol)
         elif row.waveform == "BTLWNB":
             numberspart = "{}b{}tau{}".format(row.frequency, row.bandwidth, row.duration)
         
