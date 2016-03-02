@@ -129,7 +129,8 @@ for family in inj_families:
             # Make the GravEn log file for the frame
             
             # Make a folder to put it in the place cWB like
-            mkdir(mdc_folder+"/"+family+"/"+injection[:-16]+"/"+"input/")
+
+            mkdir(mdc_folder+"/"+mdcs.directory_path()+"/"+"input/")
             # Make the file name
             print "Making log file for {}".format(injection[:-16])
             print "\t in {}".format(log_filepath+log_filename)
