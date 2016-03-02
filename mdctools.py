@@ -460,7 +460,9 @@ class Frame():
                 # Make the timeseries
                 h_resp = lal.CreateREAL8TimeSeries("inj time series", epoch, 0, 1.0/16384, lal.StrainUnit, nsamp)
                 # Loop over all of the injections corresponding to this frame
-                for row in self.get_rowlist(mdc):
+                rowlist = self.get_rowlist(mdc)
+                if len(rowlist)==0: return
+                for row in rowlist:
                     sim_burst = mdc.waveforms[row]
                     # Produce the time domain waveform for this injection
                     hp, hx = lalburst.GenerateSimBurst(sim_burst, 1.0/16384);
